@@ -1,12 +1,18 @@
 var webpack = require('webpack');
 var path = require("path");
-let ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 module.exports = {
   entry: [
       './src/index.js'
   ],
+  target: 'node',
   module: {
+    preLoaders: [
+      {  
+        test: /\.json$/,
+        loader: 'json' // read *.json files properly when it is used as entry file
+      }
+    ],
     loaders: [{
       test: /\.js$/,
       exclude: /node_modules/,
