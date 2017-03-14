@@ -86,6 +86,7 @@ export default class PoiCollector {
 
 	}
 
+	// Start works defining which pages every worker will collect
 	startWorkers( numberPages ) {
 		
 		console.log("Starting worker");	
@@ -106,6 +107,7 @@ export default class PoiCollector {
 		return workers;
 	}
 
+	// Create a worker responsible for collecting reviews in such pages
 	createWorker( initPage, nPages ) {
 		
 		return this.executeAsync( ( resolve, reject ) => {
@@ -118,17 +120,18 @@ export default class PoiCollector {
 			for(let page = initPage; page <= total ; page++) {
 
 				if(page == 1)
-					this.collectReviews( TRIP_ADVISOR_REVIEW_URL( this.baseReviewUrl ) );
-				else {
-					const offset = (page-1) * 10;
-					let urlTemp = partsUrl.slice(0, partsUrl.length);
+					this.collectReviews( "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" );
+					// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( this.baseReviewUrl ) );
+				// else {
+				// 	const offset = (page-1) * 10;
+				// 	let urlTemp = partsUrl.slice(0, partsUrl.length);
 
-					urlTemp.splice(4, 0, `or${offset}`);
+				// 	urlTemp.splice(4, 0, `or${offset}`);
 
-					const baseUrl = urlTemp.join('-');
-					this.collectReviews( TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
+				// 	const baseUrl = urlTemp.join('-');
+				// 	this.collectReviews( TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
 
-				}
+				// }
 
 			}			
 			
@@ -141,7 +144,17 @@ export default class PoiCollector {
 	// Collect reviews according to full url ( tripAdvisor_url + review_url_base )
 	collectReviews( url ) {
 		
-		console.log( url );
+		request.get( url, ( error, response, body ) => {
+
+			if(error)
+				reject(error);
+
+			const $ = cheerio.load(body);
+			const reviews = $('.review.basic_review.inlineReviewUpdate.provider0.newFlag');
+			console.log(reviews['0'].children);
+		} );		
+
+		
 
 	}
 
