@@ -1,12 +1,17 @@
 import cheerio from 'cheerio';
 import request from 'request';
 
-const TRIP_ADVISOR_URL = "https://www.tripadvisor.com";
-const TRIP_ADVISOR_SEARCH_URL = ( criteria ) => ( `${TRIP_ADVISOR_URL}/Search?q=${criteria}` );
-const TRIP_ADVISOR_REVIEW_URL = ( review ) => ( `${TRIP_ADVISOR_URL}${review}` )
-const MAX_N_WORKERS = 5;
+// Internal dependencies
+
+
+
 
 export default class PoiCollector {
+
+	static TRIP_ADVISOR_URL = "https://www.tripadvisor.com";
+	static TRIP_ADVISOR_SEARCH_URL = ( criteria ) => ( `${TRIP_ADVISOR_URL}/Search?q=${criteria}` );
+	static TRIP_ADVISOR_REVIEW_URL = ( review ) => ( `${TRIP_ADVISOR_URL}${review}` );
+	static MAX_N_WORKERS = 5;
 	
 	constructor() {
 		this.baseReviewUrl = "";
@@ -152,9 +157,21 @@ export default class PoiCollector {
 			const $ = cheerio.load(body);
 			const reviews = $('.review.basic_review.inlineReviewUpdate.provider0.newFlag');
 			console.log(reviews['0'].children);
+
+			const authorInfos = this.collectAuthorInfos( reviews['0'].children[1] );
+			const authorInfos = this.collectAuthorInfos( reviews['0'].children[3] );
+
 		} );		
 
 		
+
+	}
+
+	collectAuthorInfos( component ) {
+
+	}
+
+	collectAuthorComment( component ) {
 
 	}
 
