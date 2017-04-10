@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "cheerio": "^0.22.0",
+    "jsdom": "^9.12.0",
+    "node-horseman": "^3.3.0",
     "request": "^2.81.0"
   },
   "scripts": {
-    "start": "NODE_ENV=production webpack --config ./webpack.config.js --progress --colors && node ./dist/app.js"
+    "start": "webpack --config ./webpack.config.js --progress --colors && node ./dist/app.js"
   },
   "repository": {
     "type": "git",
