@@ -1,18 +1,29 @@
 var webpack = require('webpack');
 var path = require("path");
 
+var fs = require('fs');
+
+var nodeModules = {};
+fs.readdirSync('node_modules')
+  .filter(function(x) {
+    return ['.bin'].indexOf(x) === -1;
+  })
+  .forEach(function(mod) {
+    nodeModules[mod] = 'commonjs ' + mod;
+  });
+
 module.exports = {
   entry: [
       './src/index.js'
   ],
   target: 'node',
   module: {
-    preLoaders: [
-      {  
-        test: /\.json$/,
-        loader: 'json' // read *.json files properly when it is used as entry file
-      }
-    ],
+    // preLoaders: [
+    //   {  
+    //     test: /\.json$/,
+    //     loader: 'json' // read *.json files properly when it is used as entry file
+    //   }
+    // ],
     loaders: [{
       test: /\.js$/,
       exclude: /node_modules/,
@@ -30,12 +41,13 @@ module.exports = {
   devServer: {
     contentBase: './dist', // Path that will be served with resources
   },
-  plugins: [
-    new webpack.DefinePlugin({
-      'process.env': {
-        'NODE_ENV': JSON.stringify('development')
-      },
-      '__API__': JSON.stringify('http://localhost:8080')
-    })                      
-  ]
+  externals: nodeModules
+  // plugins: [
+  //   new webpack.DefinePlugin({
+  //     'process.env': {
+  //       'NODE_ENV': JSON.stringify('development')
+  //     },
+  //     '__API__': JSON.stringify('http://localhost:8080')
+  //   })                      
+  // ]
 };
