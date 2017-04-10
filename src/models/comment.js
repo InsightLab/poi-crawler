@@ -6,8 +6,8 @@ class Comment {
 		this.author;
 		this.title;
 		this.bubbleCount;
-		this.comment;
-		this.likedCount;
+		this.text;
+		this.thanksCount;
 	}
 }
 
