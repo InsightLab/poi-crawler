@@ -126,7 +126,7 @@ export default class PoiCollector {
 			for(let page = initPage; page <= total ; page++) {
 
 				if(page == 1)
-					this.collectReviews( resolve, "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" );
+					this.collectReviews( "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" );
 					// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( this.baseReviewUrl ) );
 				// else {
 				// 	const offset = (page-1) * 10;
@@ -148,25 +148,40 @@ export default class PoiCollector {
 	}
 
 	// Collect reviews according to full url ( tripAdvisor_url + review_url_base )
-	collectReviews( resolve, url ) {
+	collectReviews( url ) {
 		
 		console.log("Collecting reviews");
 		
-		const users = ['PhantomJS', 'nodejs'];
+		const horseman = new Horseman();
 
-		users.forEach((user) => {
-		    const horseman = new Horseman();
-		    horseman
-		        .open(`http://twitter.com/${user}`)
-		        .text('.ProfileNav-item--followers .ProfileNav-value')
-		        .then((text) => {
-		            console.log(`${user}: ${text}`);
-		            					
-		        })
-		        .close();
+		horseman
+			.open( url )
+			.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0.newFlag' )
+			.click( '.review.basic_review.inlineReviewUpdate.provider0.newFlag .partnerRvw .taLnk' )
+			.waitForSelector( '.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag' )
+			.evaluate( () => {
+				
+				return $( 'body' ).html();
 
-		    
-		});
+			} )
+			.then( ( body ) => {
+				
+					const $ = cheerio.load( body );
+					const reviews = $('.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag');
+					
+					// console.log(reviews);
+					const reviewsInfosComp = reviews['0'].children[3];
+					// console.log(reviewsInfosComp);
+					const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[1] );
+					const comment = this.collectCommentInfos( reviewsInfosComp.children[3] );
+
+					comment.author = authorInfos
+
+					console.log(comment);
+					// saveComment(comment);
+
+				return horseman.close();
+			} );
 		
 
 
@@ -295,13 +310,13 @@ export default class PoiCollector {
 	collectCommentInfos( component ) {
 		
 		const comment = new Comment;
-
-		const infosComp = component.children[1].children[1];
+				
+		const infosComp = component.children[1];
 
 		// Title
 		const titleComp = infosComp.children[1];
-		comment.title = titleComp.children[1].children[1].children[0].data;
-		
+		comment.title = titleComp.children[0].children[1].children[0].data;
+				
 		// Bubble count
 		const bubbleComp = infosComp.children[3];
 		const bubbleInfoComp = bubbleComp.children[1].children[1];
@@ -309,12 +324,12 @@ export default class PoiCollector {
 
 		// Comment
 		const commentComp = infosComp.children[5];
-		// comment.text = commentComp.children[1].children[0].data.replace(/\\n/,'');
+		comment.text = commentComp.children[1].children[0].data.replace(/\\n/,'');
 
-		// Thanks count
+		// // Thanks count
 		const thanksComp = infosComp.children[7];
 
-		console.log(comment);
+		return comment;
 	}
 
 	saveComment( comment ) {
