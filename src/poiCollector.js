@@ -1,22 +1,22 @@
 import cheerio from 'cheerio';
 import request from 'request';
 var Horseman = require('node-horseman');
-
+var MongoClient = require('mongodb').MongoClient;
 
 // Internal dependencies
 import { Author, Comment } from './models';
+
+
+const DB_URL = 'mongodb://172.17.0.2:27017/opiniorizer';
 
 const TRIP_ADVISOR_URL = "https://www.tripadvisor.com";
 const TRIP_ADVISOR_SEARCH_URL = ( criteria ) => ( `${TRIP_ADVISOR_URL}/Search?q=${criteria}` );
 const TRIP_ADVISOR_REVIEW_URL = ( review ) => ( `${TRIP_ADVISOR_URL}${review}` );
 const MAX_N_WORKERS = 5;
 
-export default class PoiCollector {
+let BASE_REVIEW_URL = "";
 
-	
-	constructor() {
-		this.baseReviewUrl = "";
-	}
+export default class PoiCollector {
 
 	collect( poi ) {
 		
@@ -58,7 +58,7 @@ export default class PoiCollector {
 				
 				const reviews_url = poi_reviews.children[1].attribs.href;
 				
-				this.baseReviewUrl = reviews_url
+				BASE_REVIEW_URL = reviews_url
 
 				resolve(reviews_url);
 			} );
@@ -118,70 +118,112 @@ export default class PoiCollector {
 		
 		return this.executeAsync( ( resolve, reject ) => {
 			
-			console.log(`Worker: ${initPage} - ${nPages}`);
+			const action = function(err, db) {
+			 	
+				if(err){
+					console.log("MongoDB connection error");
+					reject(err);
+				}
 
-			let partsUrl = this.baseReviewUrl.split('-');
-			
-			const total = initPage + nPages;	
-			for(let page = initPage; page <= total ; page++) {
+				const collection = db.collection('opinions');
 
-				if(page == 1)
-					this.collectReviews( "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" );
-					// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( this.baseReviewUrl ) );
-				// else {
-				// 	const offset = (page-1) * 10;
-				// 	let urlTemp = partsUrl.slice(0, partsUrl.length);
+				console.log(`Worker: ${initPage} - ${nPages}`);
 
-				// 	urlTemp.splice(4, 0, `or${offset}`);
+				let partsUrl = BASE_REVIEW_URL.split('-');
+				
+				let collects = [];
 
-				// 	const baseUrl = urlTemp.join('-');
-				// 	this.collectReviews( TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
+				const total = initPage + nPages;	
+				for(let page = initPage; page <= total ; page++) {
 
-				// }
+					if(page == 1)
+						collects.push(this.collectReviews( collection, "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" ));
+						// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( BASE_REVIEW_URL ) );
+					// else {
+					// 	const offset = (page-1) * 10;
+					// 	let urlTemp = partsUrl.slice(0, partsUrl.length);
 
-			}			
-					
-			resolve();			
+					// 	urlTemp.splice(4, 0, `or${offset}`);
+
+					// 	const baseUrl = urlTemp.join('-');
+					// 	this.collectReviews( TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
+
+					// }
+
+				}	
+				
+				Promise.all( collects ).then( () => {
+					console.log("Finished worker");
+					db.close();					
+					resolve();			
+				} );				
+
+
+			}.bind(this);	
+
+
+			MongoClient.connect(DB_URL, action);
+
+				
 
 		} );	
 
 	}
 
 	// Collect reviews according to full url ( tripAdvisor_url + review_url_base )
-	collectReviews( url ) {
+	collectReviews( collection, url ) {
 		
 		console.log("Collecting reviews");
 		
-		const horseman = new Horseman();
+		return new Promise( ( resolve, reject ) => {
+			
 
-		horseman
-			.open( url )
-			.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0.newFlag' )
-			.click( '.review.basic_review.inlineReviewUpdate.provider0.newFlag .partnerRvw .taLnk' )
-			.waitForSelector( '.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag' )
-			.evaluate( () => {
-				
-				return $( 'body' ).html();
+			const horseman = new Horseman();
 
-			} )
-			.then( ( body ) => {
-				
-					const $ = cheerio.load( body );
-					const reviews = $('.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag');
+			horseman
+				.open( url )
+				.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0.newFlag' )
+				.click( '.review.basic_review.inlineReviewUpdate.provider0.newFlag .partnerRvw .taLnk' )
+				.waitForSelector( '.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag' )
+				.evaluate( () => {
 					
-					// console.log(reviews);
-					const reviewsInfosComp = reviews['0'].children[3];
-					// console.log(reviewsInfosComp);
-					const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[1] );
-					const comment = this.collectCommentInfos( reviewsInfosComp.children[3] );
+					return $( 'body' ).html();
 
-					comment.author = authorInfos
+				} )
+				.then( ( body ) => {
+					
+						const $ = cheerio.load( body );
+						const reviews = $('.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag');
+						
+						// console.log(reviews);
 
-					console.log(comment);
-					// saveComment(comment);
+						Object.keys( reviews ).forEach( ( pos ) => {
 
-				return horseman.close();
-			} );
+								if( !isNaN(pos) ) {
+
+									const reviewsInfosComp = reviews[pos].children[3];
+									// console.log(reviewsInfosComp);
+									const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[1] );
+									const comment = this.collectCommentInfos( reviewsInfosComp.children[3] );
+
+									comment.author = authorInfos
+									
+									// Save comment into database
+									collection.insert(comment);
+								}	
+
+						} )
+						
+
+					return;
+				} ).finally( () => {
+					horseman.close();
+					console.log("Finished collecting")
+					resolve();
+				} );
+		
+		} );
+
 		
 
 
@@ -330,16 +372,6 @@ export default class PoiCollector {
 		const thanksComp = infosComp.children[7];
 
 		return comment;
-	}
-
-	saveComment( comment ) {
-
-		return executeAsync( ( resolve, reject ) => {
-
-			// save comment
-
-		} );
-
 	}
 
 	executeAsync( fn ) {
