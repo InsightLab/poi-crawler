@@ -3,6 +3,9 @@ import request from 'request';
 var Horseman = require('node-horseman');
 var MongoClient = require('mongodb').MongoClient;
 
+import events from 'events';
+const eventEmitter = new events.EventEmitter();
+
 // Internal dependencies
 import { Author, Comment } from './models';
 
@@ -24,13 +27,17 @@ export default class PoiCollector {
 		
 			this.discoverHowManyPages( TRIP_ADVISOR_REVIEW_URL( url ) ).then( ( number ) => {
 
-				let workers = this.startWorkers( number );
+				// let workers = this.startWorkers( number );
 				
-				Promise.all(workers).then( ( result ) => {
+				// Promise.all(workers).then( ( result ) => {
 
-					console.log("Finish workers");
+				// 	console.log("Finish workers");
+				// 	
+				
+				this.createWorker();
+				eventEmitter.emit( 'nextCollect', 1, number );
 
-				}, this.dispatchError );
+				// }, this.dispatchError );
 
 			}, this.dispatchError);
 			
@@ -114,59 +121,66 @@ export default class PoiCollector {
 	}
 
 	// Create a worker responsible for collecting reviews in such pages
-	createWorker( initPage, nPages ) {
-		
-		return this.executeAsync( ( resolve, reject ) => {
+	createWorker( maxPages ) {
 			
+		
+		eventEmitter.on('nextCollect', ( page ) => {
+		
+			console.log("Collecting page " + page + "...");
+
+			if( page > maxPages ){
+				eventEmitter.removeListener('nextCollect');
+				return;
+			}
+
 			const action = function(err, db) {
 			 	
 				if(err){
 					console.log("MongoDB connection error");
-					reject(err);
+					return;
 				}
 
 				const collection = db.collection('opinions');
 
-				console.log(`Worker: ${initPage} - ${nPages}`);
-
 				let partsUrl = BASE_REVIEW_URL.split('-');
 				
-				let collects = [];
+				let task;
 
-				const total = initPage + nPages;	
-				for(let page = initPage; page <= total ; page++) {
+				if(page == 1)
+					task = this.collectReviews( collection, TRIP_ADVISOR_REVIEW_URL( BASE_REVIEW_URL ) );
+					// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( BASE_REVIEW_URL ) );
+				else {
 
-					if(page == 1)
-						collects.push(this.collectReviews( collection, "https://www.tripadvisor.com/Attraction_Review-g187147-d188151-Reviews-or10-Eiffel_Tower-Paris_Ile_de_France.html?t=1#REVIEWS" ));
-						// this.collectReviews( TRIP_ADVISOR_REVIEW_URL( BASE_REVIEW_URL ) );
-					// else {
-					// 	const offset = (page-1) * 10;
-					// 	let urlTemp = partsUrl.slice(0, partsUrl.length);
+					const offset = (page-1) * 10;
+					let urlTemp = partsUrl.slice(0, partsUrl.length);
 
-					// 	urlTemp.splice(4, 0, `or${offset}`);
+					urlTemp.splice(4, 0, `or${offset}`);
 
-					// 	const baseUrl = urlTemp.join('-');
-					// 	this.collectReviews( TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
+					const baseUrl = urlTemp.join('-');
 
-					// }
+					console.log(TRIP_ADVISOR_REVIEW_URL( baseUrl ));
 
-				}	
-				
-				Promise.all( collects ).then( () => {
-					console.log("Finished worker");
-					db.close();					
-					resolve();			
-				} );				
+					task = this.collectReviews( collection, TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
+
+				}
 
 
-			}.bind(this);	
+				task.then( () => {
 
+					db.close();
+					eventEmitter.emit('nextCollect', page + 1);
+
+				} );
+							
+
+			}.bind(this);
 
 			MongoClient.connect(DB_URL, action);
+			
 
-				
+		});
 
-		} );	
+		
 
 	}
 
@@ -175,16 +189,16 @@ export default class PoiCollector {
 		
 		console.log("Collecting reviews");
 		
-		return new Promise( ( resolve, reject ) => {
-			
+		return new Promise( (resolve, reject) => {
 
-			const horseman = new Horseman();
+			const horseman = new Horseman();	
 
 			horseman
 				.open( url )
-				.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0.newFlag' )
-				.click( '.review.basic_review.inlineReviewUpdate.provider0.newFlag .partnerRvw .taLnk' )
-				.waitForSelector( '.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag' )
+				.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0', { timeout: 10000 } )
+				.waitForSelector( '.review.basic_review.inlineReviewUpdate.provider0 .partnerRvw .taLnk', { timeout: 10000 } )
+				.click( '.review.basic_review.inlineReviewUpdate.provider0 .partnerRvw .taLnk' )
+				.waitForSelector( '.review.dyn_full_review.inlineReviewUpdate.provider0', { timeout: 10000 } )
 				.evaluate( () => {
 					
 					return $( 'body' ).html();
@@ -193,7 +207,7 @@ export default class PoiCollector {
 				.then( ( body ) => {
 					
 						const $ = cheerio.load( body );
-						const reviews = $('.review.dyn_full_review.inlineReviewUpdate.provider0.newFlag');
+						const reviews = $('.review.dyn_full_review.inlineReviewUpdate.provider0');
 						
 						// console.log(reviews);
 
@@ -216,15 +230,15 @@ export default class PoiCollector {
 						
 
 					return;
+
 				} ).finally( () => {
+					console.log("Finished collecting");
 					horseman.close();
-					console.log("Finished collecting")
 					resolve();
 				} );
-		
+			
 		} );
 
-		
 
 
 		// let phInstance = null;
@@ -317,13 +331,29 @@ export default class PoiCollector {
 
 		// First part
 
-		const subComp = memberBadging.children[1];
+		let subComp = memberBadging.children[1];
 		
+
+		if( !subComp.attribs.id )
+			subComp = memberBadging.children[3];
+
 		const levelComp = subComp.children[1];
-		authorInfos.level = parseInt(/lvl_\d+/.exec(levelComp.attribs.class)[0].split('_')[1]);
+
+		if( levelComp ){
+			authorInfos.level = parseInt(/lvl_\d+/.exec(levelComp.attribs.class)[0].split('_')[1]);
+		
+		}else {
+			authorInfos.level = 0;
+		}
+				
 		
 		const reviewsCountComp = subComp.children[3];
-		authorInfos.reviewsCount = parseInt(reviewsCountComp.children[3].children[0].data.split(' ')[0]);
+		if( reviewsCountComp ){
+
+			authorInfos.reviewsCount = parseInt(reviewsCountComp.children[3].children[0].data.split(' ')[0]);
+		} else {
+			authorInfos.reviewsCount = 0;
+		}
 
 		// Attraction review can not exist
 		const attractionReviewsCountComp = subComp.children[5];
