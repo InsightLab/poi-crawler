@@ -2,9 +2,11 @@ class Author {
 
 	constructor() {
 		this.level;
-		this.reviewsCount;
-		this.attractionReviewsCount;
+		this.reviews;
+		this.ratings;
+		this.postForum;
 		this.helpfulVotes;
+		this.memberSince;
 	}
 }
 
