@@ -39,9 +39,8 @@ export default class PoiCollector {
 				// 	console.log("Finish workers");
 				// 	
 				
-				this.createWorker();
-				eventEmitter.emit( 'nextCollect', 1, number );
-
+				this.createWorker( number );
+				
 				// }, this.dispatchError );
 
 			}, this.dispatchError);
@@ -129,27 +128,27 @@ export default class PoiCollector {
 	// Create a worker responsible for collecting reviews in such pages
 	createWorker( maxPages ) {
 			
-		
-		eventEmitter.on('nextCollect', ( page ) => {
-		
-			console.log("Collecting page " + page + "...");
-
-			if( page > maxPages ){
-				eventEmitter.removeListener('nextCollect');
+		const action = function(err, db) {
+			 	
+			if(err){
+				console.log("MongoDB connection error");
 				return;
 			}
 
-			const action = function(err, db) {
-			 	
-				if(err){
-					console.log("MongoDB connection error");
+			const collection = db.collection('opinions');
+
+			eventEmitter.on('nextCollect', ( page ) => {
+		
+				console.log("Collecting page " + page + "...");
+
+				if( page > maxPages ){
+					eventEmitter.removeListener('nextCollect');
 					return;
 				}
-
-				const collection = db.collection('opinions');
+						
 
 				let partsUrl = BASE_REVIEW_URL.split('-');
-				
+			
 				let task;
 				
 				if(page == 1)
@@ -166,26 +165,24 @@ export default class PoiCollector {
 					console.log(TRIP_ADVISOR_REVIEW_URL( baseUrl ));
 
 					task = this.collectReviews( collection, TRIP_ADVISOR_REVIEW_URL( baseUrl ) );
-
+				
 				}
 
-
 				task.then( () => {
-
-					db.close();
 					eventEmitter.emit('nextCollect', page + 1);
-
 				} );
-							
+					
 
-			}.bind(this);
+			});
 
-			MongoClient.connect(DB_URL, action);
-			
 
-		});
+			eventEmitter.emit( 'nextCollect', 1);	
+
+		}.bind(this);
 
 		
+		MongoClient.connect(DB_URL, action);
+
 
 	}
 
@@ -235,10 +232,14 @@ export default class PoiCollector {
 								// console.log(reviewsInfosComp);
 								const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[0].children[0] );
 								const comment = this.collectCommentInfos( reviewsInfosComp.children[0].children[1] );
+								
 								authorInfos.then( ( author ) => {
 									
-									
+									comment.author = author;
+									console.log("Saving comment into database...");
+									collection.insert( comment );
 
+									
 								} );
 							}	
 
@@ -251,6 +252,7 @@ export default class PoiCollector {
 					console.log("Finished collecting");
 					horseman.close();
 					resolve();
+					
 				} );
 			
 		} );
@@ -371,7 +373,7 @@ export default class PoiCollector {
 		// Query
 		comment.query = this.poi;
 		
-		console.log( comment );
+		// console.log( comment );
 		return comment;
 	}
 
