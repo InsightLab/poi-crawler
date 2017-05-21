@@ -193,21 +193,34 @@ export default class PoiCollector {
 	collectReviews( collection, url ) {
 		
 		console.log("Collecting reviews");
+
 		
+	
 		return new Promise( (resolve, reject) => {
 			
 			console.log( url );
-			const horseman = new Horseman();	
+
+			const horseman = new Horseman();
+
+			
+			const clickAllShowmore = ( selector ) => {
+
+				$( selector ).each( ( index, item ) => {
+					$( item ).click();
+				});
+			};
+
 
 			horseman
 				.open( url )
 				.waitForSelector( '.review-container', { timeout: 5000 } )
-				.click( '.review-container .taLnk.ulBlueLinks' )
+				.evaluate( clickAllShowmore, '.review-container .taLnk' )
+				.wait(10000)
 				.evaluate( () => {
-					
-					return $( 'body' ).html();
-
-				} )
+				
+					return $('body').html();
+				
+				} )		
 				.then( ( body ) => {
 					
 						const $ = cheerio.load( body );
@@ -241,6 +254,8 @@ export default class PoiCollector {
 				} );
 			
 		} );
+
+		
 
 
 	}
@@ -287,7 +302,11 @@ export default class PoiCollector {
 					let countHelpfulVotes = getInfoCount($, 'lists' );
 					
 					const levelComp = $('.level.tripcollectiveinfo');
-					const level = levelComp[0].children[1].children[0].data;
+					let level = levelComp[0]
+					if( level )
+						level = level.children[1].children[0].data;
+					else
+						level = 0;
 
 					const points = $('.points')[0].children[0].data;
 					
@@ -319,28 +338,40 @@ export default class PoiCollector {
 		
 		const comment = new Comment;
 				
-		const infosComp = component.children[1];
-		console.log( infosComp );
+		const infosComp = component.children[0].children[0];
+		
+		// Title
+		const titleComp = infosComp.children[1];
+		comment.title = titleComp.children[0].children[0].children[0].data;
+		
+		// Bubble count
+		const bubbleComp = infosComp.children[0];
+		const bubbleInfoComp = bubbleComp.children[0];
+		comment.bubbleCount = parseInt(bubbleInfoComp.attribs.class.split(' ')[1].split('_')[1]);
+		
+		// Creation date
+		const createdAtComp = infosComp.children[0];
+		const createdAtInfoComp = createdAtComp.children[1];
+		comment.createdAt = createdAtInfoComp.attribs.title;
 
-		// // Title
-		// const titleComp = infosComp.children[1];
-		// comment.title = titleComp.children[0].children[1].children[0].data;
-				
-		// // Bubble count
-		// const bubbleComp = infosComp.children[3];
-		// const bubbleInfoComp = bubbleComp.children[1].children[1];
-		// comment.bubbleCount = parseInt(bubbleInfoComp.attribs.alt.split(' ')[0]);
+		// Comment
+		const commentComp = infosComp.children[2];
+		// comment.text = commentComp.children[0].children[0].data.replace(/\\n/,'');
+		comment.text = commentComp.children[0].children[0].children[0].data;
 
-		// // Comment
-		// const commentComp = infosComp.children[5];
-		// comment.text = commentComp.children[1].children[0].data.replace(/\\n/,'');
+		// Thanks count
+		// const thanksComp = infosComp.children[3];
+		// // console.log( thanksComp);
 
-		// // Thanks count
-		// const thanksComp = infosComp.children[7];
+		// if( thanksComp.attribs.class != 'prw_rup prw_reviews_vote_line_hsx' )
+		// 	thanksComp = infosComp.children[4];
 
-		// // Query
-		// comment.query = this.poi;
+		// console.log( thanksComp.children[1] );
 
+		// Query
+		comment.query = this.poi;
+		
+		console.log( comment );
 		return comment;
 	}
 
