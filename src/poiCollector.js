@@ -140,11 +140,14 @@ export default class PoiCollector {
 			eventEmitter.on('nextCollect', ( page ) => {
 		
 				console.log("Collecting page " + page + "...");
-
-				if( page > maxPages ){
-					eventEmitter.removeListener('nextCollect');
-					return;
-				}
+				
+				// ##### TODO
+				// Erro abaixo: maxPages está vindo menor que o esperado..olhar..
+				// if( page > maxPages ){
+				// 	console.log(`Max pages error...page = ${page} / maxPage=${maxPages}`);
+				// 	eventEmitter.removeListener('nextCollect');
+				// 	return;
+				// }
 						
 
 				let partsUrl = BASE_REVIEW_URL.split('-');
@@ -176,7 +179,7 @@ export default class PoiCollector {
 			});
 
 
-			eventEmitter.emit( 'nextCollect', 1);	
+			eventEmitter.emit( 'nextCollect', 435);	
 
 		}.bind(this);
 
@@ -236,6 +239,8 @@ export default class PoiCollector {
 								authorInfos.then( ( author ) => {
 									
 									comment.author = author;
+									comment.collectedAt = new Date();
+
 									console.log("Saving comment into database...");
 									collection.insert( comment );
 
@@ -289,43 +294,44 @@ export default class PoiCollector {
 				if(error){
 					console.log(" Error requesting username... ");
 					reject();
-				}
-
-				const $ = cheerio.load(body);
-				
-				let memberSince = $('.ageSince').children().get(0);
-				if( memberSince ) {
-					
-					memberSince = memberSince.children[0].data;
-
-					let countReviews = getInfoCount($, 'reviews' );
-					let countRatings = getInfoCount($, 'ratings' );
-					let countPostForum = getInfoCount($, 'forums' );
-					let countHelpfulVotes = getInfoCount($, 'lists' );
-					
-					const levelComp = $('.level.tripcollectiveinfo');
-					let level = levelComp[0]
-					if( level )
-						level = level.children[1].children[0].data;
-					else
-						level = 0;
-
-					const points = $('.points')[0].children[0].data;
-					
-					const author = new Author();
-					author.memberSince = memberSince;
-					author.reviews = countReviews;
-					author.ratings = countRatings;
-					author.postForum = countPostForum;
-					author.helpfulVotes = countHelpfulVotes;
-					author.level = level;
-
-					resolve( author );
-
 				} else {
-					reject();
-				}	
+
+					const $ = cheerio.load(body);
 					
+					let memberSince = $('.ageSince').children().get(0);
+					if( memberSince ) {
+						
+						memberSince = memberSince.children[0].data;
+
+						let countReviews = getInfoCount($, 'reviews' );
+						let countRatings = getInfoCount($, 'ratings' );
+						let countPostForum = getInfoCount($, 'forums' );
+						let countHelpfulVotes = getInfoCount($, 'lists' );
+						
+						const levelComp = $('.level.tripcollectiveinfo');
+						let level = levelComp[0]
+						if( level )
+							level = level.children[1].children[0].data;
+						else
+							level = 0;
+
+						const points = $('.points')[0].children[0].data;
+						
+						const author = new Author();
+						author.memberSince = memberSince;
+						author.reviews = countReviews;
+						author.ratings = countRatings;
+						author.postForum = countPostForum;
+						author.helpfulVotes = countHelpfulVotes;
+						author.level = level;
+
+						resolve( author );
+
+					} else {
+						reject();
+					}	
+					
+				}
 					
 			} );
 

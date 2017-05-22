@@ -10,6 +10,7 @@ class Comment {
 		// this.thanksCount;
 		this.query;
 		this.createdAt;
+		this.collectedAt;
 	}
 }
 
