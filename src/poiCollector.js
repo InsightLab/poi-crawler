@@ -62,11 +62,9 @@ export default class PoiCollector {
 
 				const $ = cheerio.load(body);
 
-				const results = $('#search_result');
-
-				const poi_reviews = results.children().get(2).children[0].children[0].children[1].children[1];
-				const reviews_url = poi_reviews.children[1].attribs.href;
-				
+				const results = $('.review-count');
+				const reviews_url = results[0].attribs.href;
+				console.log( reviews_url );
 				const url_split = reviews_url.split('?');
 				BASE_REVIEW_URL = url_split[0];
 				
@@ -179,7 +177,7 @@ export default class PoiCollector {
 			});
 
 
-			eventEmitter.emit( 'nextCollect', 435);	
+			eventEmitter.emit( 'nextCollect', 1);	
 
 		}.bind(this);
 
