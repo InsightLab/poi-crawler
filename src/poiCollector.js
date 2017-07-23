@@ -239,11 +239,14 @@ export default class PoiCollector {
 									comment.author = author;
 									comment.collectedAt = new Date();
 
-									console.log("Saving comment into database...");
+									console.log( "Saving comment into database..." );
 									collection.insert( comment );
 
 									
-								} );
+								}, () => {
+									console.log( "Error collecting author's infos" );
+								} )
+
 							}	
 
 						} );
@@ -367,18 +370,16 @@ export default class PoiCollector {
 
 		// Thanks count
 		const thanksComp = infosComp.children[3];
-		const thanksCount = thanksComp.children[1].children[0].children[0].children[1].children[0];
-
-		if( thanksCount )
-			comment.thanksCount = parseInt( thanksCount.data );
-		else
+		
+		if( thanksComp.children[1] && thanksComp.children[1].children[0] && thanksComp.children[1].children[0].children[0] &&
+			thanksComp.children[1].children[0].children[0].children[1] && thanksComp.children[1].children[0].children[0].children[1].children[0] ) {
+			
+			const thanksCount = thanksComp.children[1].children[0].children[0].children[1].children[0].data;
+			
+			comment.thanksCount = parseInt( thanksCount );
+		} else
 			comment.thanksCount = 0;
-
-		// if( thanksComp.attribs.class != 'prw_rup prw_reviews_vote_line_hsx' )
-		// 	thanksComp = infosComp.children[4];
-
-		// console.log( thanksComp.children[1] );
-
+		
 		// Query
 		comment.query = this.poi;
 		
