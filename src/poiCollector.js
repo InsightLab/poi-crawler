@@ -231,19 +231,19 @@ export default class PoiCollector {
 								const reviewsInfosComp = reviews[pos];
 								// console.log( reviewsInfosComp.children[0] );
 								// console.log(reviewsInfosComp);
-								//const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[0].children[0] );
+								const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[0].children[0] );
 								const comment = this.collectCommentInfos( reviewsInfosComp.children[0].children[1] );
 								
-								// authorInfos.then( ( author ) => {
+								authorInfos.then( ( author ) => {
 									
-								// 	comment.author = author;
-								// 	comment.collectedAt = new Date();
+									comment.author = author;
+									comment.collectedAt = new Date();
 
-								// 	console.log("Saving comment into database...");
-								// 	collection.insert( comment );
+									console.log("Saving comment into database...");
+									collection.insert( comment );
 
 									
-								// } );
+								} );
 							}	
 
 						} );
