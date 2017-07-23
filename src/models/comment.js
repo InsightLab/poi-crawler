@@ -7,7 +7,7 @@ class Comment {
 		this.title;
 		this.bubbleCount;
 		this.text;
-		// this.thanksCount;
+		this.thanksCount;
 		this.query;
 		this.createdAt;
 		this.collectedAt;

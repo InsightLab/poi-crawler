@@ -231,19 +231,19 @@ export default class PoiCollector {
 								const reviewsInfosComp = reviews[pos];
 								// console.log( reviewsInfosComp.children[0] );
 								// console.log(reviewsInfosComp);
-								const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[0].children[0] );
+								//const authorInfos = this.collectAuthorInfos( reviewsInfosComp.children[0].children[0] );
 								const comment = this.collectCommentInfos( reviewsInfosComp.children[0].children[1] );
 								
-								authorInfos.then( ( author ) => {
+								// authorInfos.then( ( author ) => {
 									
-									comment.author = author;
-									comment.collectedAt = new Date();
+								// 	comment.author = author;
+								// 	comment.collectedAt = new Date();
 
-									console.log("Saving comment into database...");
-									collection.insert( comment );
+								// 	console.log("Saving comment into database...");
+								// 	collection.insert( comment );
 
 									
-								} );
+								// } );
 							}	
 
 						} );
@@ -353,7 +353,7 @@ export default class PoiCollector {
 		// Bubble count
 		const bubbleComp = infosComp.children[0];
 		const bubbleInfoComp = bubbleComp.children[0];
-		comment.bubbleCount = parseInt(bubbleInfoComp.attribs.class.split(' ')[1].split('_')[1]);
+		comment.bubbleCount = parseInt(bubbleInfoComp.attribs.class.split(' ')[1].split('_')[1]/10);
 		
 		// Creation date
 		const createdAtComp = infosComp.children[0];
@@ -366,8 +366,13 @@ export default class PoiCollector {
 		comment.text = commentComp.children[0].children[0].children[0].data;
 
 		// Thanks count
-		// const thanksComp = infosComp.children[3];
-		// // console.log( thanksComp);
+		const thanksComp = infosComp.children[3];
+		const thanksCount = thanksComp.children[1].children[0].children[0].children[1].children[0];
+
+		if( thanksCount )
+			comment.thanksCount = parseInt( thanksCount.data );
+		else
+			comment.thanksCount = 0;
 
 		// if( thanksComp.attribs.class != 'prw_rup prw_reviews_vote_line_hsx' )
 		// 	thanksComp = infosComp.children[4];
@@ -377,7 +382,7 @@ export default class PoiCollector {
 		// Query
 		comment.query = this.poi;
 		
-		// console.log( comment );
+		console.log( comment );
 		return comment;
 	}
 
