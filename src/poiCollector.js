@@ -274,7 +274,7 @@ export default class PoiCollector {
 				
 			let value = $(`a[name=${infoName}]`);
 			if( value && value[0] ) {
-				value = value[0].children[0].data.split(' ')[0];
+				value = parseInt( value[0].children[0].data.split(' ')[0] );
 			} else {
 				value = 0;
 			}
