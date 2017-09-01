@@ -18,7 +18,8 @@
     "request": "^2.81.0"
   },
   "scripts": {
-    "start": "webpack --config ./webpack.config.js --progress --colors && node ./dist/app.js"
+    "start": "webpack --config ./webpack.config.js --progress --colors && node ./dist/app.js",
+    "start-words": "webpack --config ./webpack.words.config.js --progress --colors && node ./dist/app_words.js"
   },
   "repository": {
     "type": "git",
