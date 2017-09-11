@@ -20,10 +20,11 @@ class WordCollector {
 	testProxies() {
 		const interval = 10;
 		let page = 0;
-		const currentProxies = this.proxiesListAll.slice(interval*page, interval);
-
+		
 		emitter.on('filterNextProxies', () => {
-
+			const startIndex = interval*page;
+			const currentProxies = this.proxiesListAll.slice(startIndex, startIndex + interval);
+			
 			const requests = currentProxies.map( (proxy) => {
 				console.log(`http://${proxy[0]}:${proxy[1]}`);
 				const options = {
@@ -269,6 +270,7 @@ class WordCollector {
 const wordCollector = new WordCollector(0);
 // wordCollector.collect();
 wordCollector.testProxies();
+wordCollector.collect();
 
 
 
