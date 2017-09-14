@@ -1,12 +1,13 @@
 import request from 'request';
 import http from 'http';
+import https from 'https';
 import assert from 'assert';
 import cheerio from 'cheerio';
 import EventEmitter from 'events';
 import fs from 'fs';
 import async from 'async';
 
-const MIN_NUMBER_PROXIES = 5;
+const MIN_NUMBER_PROXIES = 3;
 const emitter = new EventEmitter();
 
 class WordCollector {
@@ -79,7 +80,7 @@ class WordCollector {
 
 	getRequestConfig( word ) {
 
-		const SEARCH_WORD = ( word ) => `http://www.bing.com/search?q=${word}`;
+		const SEARCH_WORD = ( word ) => `https://br.search.yahoo.com/search?q=${word}`;
 		// return {
 		//   url: SEARCH_WORD( word ),
 		//   proxy: this.getProxy(),
@@ -92,12 +93,15 @@ class WordCollector {
 		console.log(`http://${urlProxy[0]}:${urlProxy[1]}`);
 
 		return {
-		  path: SEARCH_WORD( word ),
-		  host: `http://${urlProxy[0]}`,
+		  url: SEARCH_WORD( word ),
+		  proxy: `${urlProxy[0]}`,
 		  port: urlProxy[1],
 		  method: 'GET',
+		  tunnel: true,
 		  headers: {
-		    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+		    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+		    // 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
+		    'Cache-Control' : 'no-cache'
 		  }
 		};
 		
@@ -124,8 +128,8 @@ class WordCollector {
 			const words = ['teste', 'internet', 'casa'];
 
 			const doRequest = (word) => {
-
-				const req = http.request( this.getRequestConfig( word ), ( res ) => {
+				console.log(this.getRequestConfig( word ));
+				const req = https.request( this.getRequestConfig( word ), ( res ) => {
 					console.log(`STATUS: ${res.statusCode}`);
 				    console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
 				    res.setEncoding('utf8');
@@ -140,6 +144,7 @@ class WordCollector {
 							console.log("ProxieIndex: " + proxieIndex);;
 							emitter.emit('nextCollecting');
 						} else {
+
 							console.log(chunk);
 						}
 						// const $ = cheerio.load( body );
@@ -166,7 +171,7 @@ class WordCollector {
 				});
 
 				req.end();
-
+				
 				// request.get( this.getRequestConfig( word ), ( err, resp, body ) => {
 				// 	if( err ) {
 				// 		this.proxieIndex++
@@ -175,13 +180,22 @@ class WordCollector {
 				// 	} else {
 
 				// 		console.log( "Getting word: " + word );
-				// 		assert.ok( resp.statusCode == 200, 'Request was not OK' );
+				// 		// assert.ok( resp.statusCode == 200, `Request was not OK: ${resp.toString()}` );
+				// 		if(resp && resp.statusCode != 200) {
+				// 			console.log(resp);
+				// 			console.log("**********************************************************************");
+				// 		} else {
+
+				// 			const $ = cheerio.load( body );
+				// 			const countResults = $('.compPagination');
+				// 			console.log( countResults );
+				// 			console.log("=======================================================================");
+				// 		}
 						
-				// 		const $ = cheerio.load( body );
-				// 		const countResults = $('.compPagination');
-				// 		console.log( countResults );
 
 				// 	}
+
+				// 	emitter.emit('nextCollecting');
 
 				// } );
 				
@@ -189,6 +203,9 @@ class WordCollector {
 
 			emitter.on('nextCollecting', () => {
 				currentWordIndex++;
+				if(currentWordIndex >= words.length)
+					return;
+
 				const currentWord = words[currentWordIndex];
 				doRequest(currentWord);
 			});
