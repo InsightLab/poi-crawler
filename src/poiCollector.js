@@ -10,7 +10,7 @@ const eventEmitter = new events.EventEmitter();
 import { Author, Comment } from './models';
 
 
-const DB_URL = 'mongodb://172.17.0.2:27017/opiniorizer';
+const DB_URL = 'mongodb://localhost:27017/opiniorizer';
 
 const TRIP_ADVISOR_URL = "https://www.tripadvisor.com";
 const TRIP_ADVISOR_MEMBER_URL = ( username ) => ( `${TRIP_ADVISOR_URL}/members/${username}` )
@@ -63,7 +63,8 @@ export default class PoiCollector {
 				const $ = cheerio.load(body);
 
 				const results = $('.review-count');
-				const reviews_url = results[0].attribs.href;
+				
+				const reviews_url = results[0].attribs.onclick.match(/\/[\w\-\.\?\=\#]+/g)[0];
 				console.log( reviews_url );
 				const url_split = reviews_url.split('?');
 				BASE_REVIEW_URL = url_split[0];
