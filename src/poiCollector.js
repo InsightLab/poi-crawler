@@ -328,7 +328,7 @@ export default class PoiCollector {
 						author.helpfulVotes = countHelpfulVotes;
 						author.level = level;
 
-						console.log(author);
+						// console.log(author);
 
 						resolve( author );
 
@@ -407,7 +407,7 @@ export default class PoiCollector {
 		// Query
 		comment.query = this.poi;
 		
-		console.log( comment );
+		// console.log( comment );
 		return comment;
 	}
 
