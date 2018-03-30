@@ -212,7 +212,8 @@ export default class PoiCollector {
 
 			horseman
 				.open( url )
-				.waitForSelector( '.review-container', { timeout: 5000 } )
+				// .waitForSelector( '.review-container', { timeout: 5000 } )
+				.waitForSelector( '#REVIEWS', { timeout: 5000 } )
 				.evaluate( clickAllShowmore, '.review-container .taLnk' )
 				.wait(10000)
 				.evaluate( () => {
@@ -327,6 +328,8 @@ export default class PoiCollector {
 						author.helpfulVotes = countHelpfulVotes;
 						author.level = level;
 
+						console.log(author);
+
 						resolve( author );
 
 					} else {
@@ -350,8 +353,10 @@ export default class PoiCollector {
 				
 		const infosComp = component.children[0].children[0];
 		
+		// console.log(infosComp)
+
 		// Title
-		const titleComp = infosComp.children[1];
+		const titleComp = infosComp.children[2];
 		comment.title = titleComp.children[0].children[0].children[0].data;
 		
 		// Bubble count
@@ -365,16 +370,34 @@ export default class PoiCollector {
 		comment.createdAt = createdAtInfoComp.attribs.title;
 
 		// Comment
-		const commentComp = infosComp.children[2];
+		const commentComp = infosComp.children[3];
 		// comment.text = commentComp.children[0].children[0].data.replace(/\\n/,'');
-		comment.text = commentComp.children[0].children[0].children[0].data;
+		// console.log(commentComp.children[0].children[0].children[0]);
+
+		const commentTextComp = commentComp.children[0].children[0].children[0];
+		let currentTextComp = commentTextComp;
+
+		comment.text = currentTextComp.data;
+		currentTextComp = currentTextComp.next;
+
+		while(currentTextComp) {
+			
+			if(currentTextComp.data) {
+				comment.text += " " + currentTextComp.data;
+			}
+
+			currentTextComp = currentTextComp.next
+
+		}
 
 		// Thanks count
-		const thanksComp = infosComp.children[3];
+		const thanksComp = infosComp.children[6];
 		
-		if( thanksComp.children[1] && thanksComp.children[1].children[0] && thanksComp.children[1].children[0].children[0] &&
-			thanksComp.children[1].children[0].children[0].children[1] && thanksComp.children[1].children[0].children[0].children[1].children[0] ) {
-			
+		if( thanksComp && thanksComp.children[1] && thanksComp.children[1].children[0] && 
+			thanksComp.children[1].children[0].children[0] && thanksComp.children[1].children[0].children[0].children[1] && 
+			thanksComp.children[1].children[0].children[0].children[1].children[0] ) {
+				
+			// console.log(thanksComp.children[1].children[0].children[0].children[1].children[0])
 			const thanksCount = thanksComp.children[1].children[0].children[0].children[1].children[0].data;
 			
 			comment.thanksCount = parseInt( thanksCount );
@@ -384,7 +407,7 @@ export default class PoiCollector {
 		// Query
 		comment.query = this.poi;
 		
-		// console.log( comment );
+		console.log( comment );
 		return comment;
 	}
 
